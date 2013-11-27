@@ -1,0 +1,4 @@
+SVG path string parser and curve subdivider to produce a list of pointer
+representing straight lines approximating a path.
+
+(c) Dean McNamee <dean@gmail.com>, 2012.
