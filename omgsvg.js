@@ -20,8 +20,6 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-// TODO(deanm): subdivQuadratic... currently the code just up-orders
-// quadratic beziers to cubics.
 function subdivCubic(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
   // Using the naming convention of 00, 10, xy where x is the iteration step
   // of the recursive and y is the point (each step one less).  The first
@@ -40,57 +38,49 @@ function subdivCubic(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
   var y21 = y11 + (y12-y11)*t;
   var y30 = y20 + (y21-y20)*t;  // Point on the curve at |t|.
 
-  return {p00: {x: p0x, y: p0y},
-          p01: {x: x10, y: y10},
-          p02: {x: x20, y: y20},
-          p03: {x: x30, y: y30},
-          p10: {x: x30, y: y30},
-          p11: {x: x21, y: y21},
-          p12: {x: x12, y: y12},
-          p13: {x: p3x, y: p3y}};
+  return [p0x, p0y, x10, y10, x20, y20, x30, y30,
+          x30, y30, x21, y21, x12, y12, p3x, p3y];
 }
 
-function doCubicSubdivH(bezs, points, subdiv_level) {
-  for (var j = 0; j < subdiv_level; ++j) {
-    var nbezs = [ ];
-    for (var i = 0, il = bezs.length; i < il; ++i) {
-      var b = bezs[i];
-      var nb = subdivCubic(b.p0.x, b.p0.y, b.p1.x, b.p1.y,
-                           b.p2.x, b.p2.y, b.p3.x, b.p3.y, 0.5);
-      nbezs.push({p0: nb.p00, p1: nb.p01, p2: nb.p02, p3: nb.p03},
-                 {p0: nb.p10, p1: nb.p11, p2: nb.p12, p3: nb.p13});
-    }
-    bezs = nbezs;
-  }
-
-  for (var i = 0, il = bezs.length; i < il; ++i) {
-    var b = bezs[i];
-    // Assume start point is already pushed.
-    // if (i === 0) points.push(b.p0.x, b.p0.y);
-    points.push(b.p1.x, b.p1.y, b.p2.x, b.p2.y, b.p3.x, b.p3.y);
-  }
-  return points;
-}
-
+// Subdivide a bezier |subdiv_level| times (recursively).
+// Appends the points to |points| in place.
 function doCubicSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
                        points, subdiv_level) {
-  var bezs = [{p0: {x: p0x, y: p0y},
-               p1: {x: p1x, y: p1y},
-               p2: {x: p2x, y: p2y},
-               p3: {x: p3x, y: p3y}}];
-  return doCubicSubdivH(bezs, points, subdiv_level);
+  var bezs = [p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y];
+
+  for (var j = 0; j < subdiv_level; ++j) {
+    var new_bezs = [ ];
+    for (var i = 7, il = bezs.length; i < il; i += 8) {
+      // Subdivide one cubic bezier (4 control points) in half, producing
+      // 8 new control points (well, the original endpoints will remain).
+      var n = subdivCubic(bezs[i-7], bezs[i-6], bezs[i-5], bezs[i-4],
+                          bezs[i-3], bezs[i-2], bezs[i-1], bezs[i], 0.5);
+      new_bezs.push(n[0], n[1],  n[2] , n[3],  n[4],  n[5],  n[6],  n[7],
+                    n[8], n[9], n[10], n[11], n[12], n[13], n[14], n[15]);
+    }
+    bezs = new_bezs;
+  }
+
+  for (var i = 7, il = bezs.length; i < il; i += 8) {
+    // Assume start point is already pushed (bezs[j-7] and bezs[j-6]).
+    points.push(bezs[i-5], bezs[i-4], bezs[i-3], bezs[i-2], bezs[i-1], bezs[i]);
+  }
+
+  return points;
 }
 
 function doCubicSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
                           points, subdiv_level) {
-  var bezs = [{p0: {x: p0x, y: p0y},
-               p1: {x: p0x+p1x, y: p0y+p1y},
-               p2: {x: p0x+p2x, y: p0y+p2y},
-               p3: {x: p0x+p3x, y: p0y+p3y}}];
-  return doCubicSubdivH(bezs, points, subdiv_level);
+  return doCubicSubdiv(p0x, p0y,
+                       p0x+p1x,p0y+p1y,
+                       p0x+p2x, p0y+p2y,
+                       p0x+p3x, p0y+p3y,
+                       points, subdiv_level);
 }
 
 function doQuadSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_level) {
+  // TODO(deanm): subdivQuadratic... currently the code just up-orders
+  // quadratic beziers to cubics.
   return doCubicSubdiv(p0x, p0y,
                        p0x + 2/3 * (p1x-p0x), p0y + 2/3 * (p1y-p0y),
                        p2x + 2/3 * (p1x-p2x), p2y + 2/3 * (p1y-p2y),
@@ -98,7 +88,9 @@ function doQuadSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_level) {
 }
 
 function doQuadSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_level) {
-  return doQuadSubdiv(p0x, p0y, p0x+p1x, p0y+p1y, p0x+p2x, p0y+p2y,
+  return doQuadSubdiv(p0x, p0y,
+                      p0x+p1x, p0y+p1y,
+                      p0x+p2x, p0y+p2y,
                       points, subdiv_level);
 }
 
