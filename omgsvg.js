@@ -22,32 +22,32 @@
 
 // TODO(deanm): subdivQuadratic... currently the code just up-orders
 // quadratic beziers to cubics.
-function subdivCubic(p0, p1, p2, p3, t) {
+function subdivCubic(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
   // Using the naming convention of 00, 10, xy where x is the iteration step
   // of the recursive and y is the point (each step one less).  The first
   // p0 would be 00, p1 would be 01, etc.
 
-  var x10 = p0.x + (p1.x-p0.x)*t;
-  var x11 = p1.x + (p2.x-p1.x)*t;
-  var x12 = p2.x + (p3.x-p2.x)*t;
+  var x10 = p0x + (p1x-p0x)*t;
+  var x11 = p1x + (p2x-p1x)*t;
+  var x12 = p2x + (p3x-p2x)*t;
   var x20 = x10 + (x11-x10)*t;
   var x21 = x11 + (x12-x11)*t;
   var x30 = x20 + (x21-x20)*t;  // Point on the curve at |t|.
-  var y10 = p0.y + (p1.y-p0.y)*t;
-  var y11 = p1.y + (p2.y-p1.y)*t;
-  var y12 = p2.y + (p3.y-p2.y)*t;
+  var y10 = p0y + (p1y-p0y)*t;
+  var y11 = p1y + (p2y-p1y)*t;
+  var y12 = p2y + (p3y-p2y)*t;
   var y20 = y10 + (y11-y10)*t;
   var y21 = y11 + (y12-y11)*t;
   var y30 = y20 + (y21-y20)*t;  // Point on the curve at |t|.
 
-  return {p00: {x: p0.x, y: p0.y},
+  return {p00: {x: p0x, y: p0y},
           p01: {x: x10, y: y10},
           p02: {x: x20, y: y20},
           p03: {x: x30, y: y30},
           p10: {x: x30, y: y30},
           p11: {x: x21, y: y21},
           p12: {x: x12, y: y12},
-          p13: {x: p3.x, y: p3.y}};
+          p13: {x: p3x, y: p3y}};
 }
 
 function doCubicSubdivH(bezs, points, subdiv_level) {
@@ -55,7 +55,8 @@ function doCubicSubdivH(bezs, points, subdiv_level) {
     var nbezs = [ ];
     for (var i = 0, il = bezs.length; i < il; ++i) {
       var b = bezs[i];
-      var nb = subdivCubic(b.p0, b.p1, b.p2, b.p3, 0.5);
+      var nb = subdivCubic(b.p0.x, b.p0.y, b.p1.x, b.p1.y,
+                           b.p2.x, b.p2.y, b.p3.x, b.p3.y, 0.5);
       nbezs.push({p0: nb.p00, p1: nb.p01, p2: nb.p02, p3: nb.p03},
                  {p0: nb.p10, p1: nb.p11, p2: nb.p12, p3: nb.p13});
     }
