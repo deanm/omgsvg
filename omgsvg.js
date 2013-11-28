@@ -42,23 +42,40 @@ function subdivCubic(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
           x30, y30, x21, y21, x12, y12, p3x, p3y];
 }
 
-// Subdivide a bezier |subdiv_level| times (recursively).
+// Subdivide a bezier based on |tolerance| flatness.  Expects |tolerance| to be
+// pre-adjusted as 16*tol^2.
 // Appends the points to |points| in place.
-function doCubicSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
-                       points, subdiv_level) {
+// See "Piecewise Linear Approximation of Bezier Curves" by Kaspar Fischer.
+function doCubicSubdivFlatness(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
+                               points, tolerance) {
   var bezs = [p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y];
 
-  for (var j = 0; j < subdiv_level; ++j) {
+  for (;;) {
     var new_bezs = [ ];
+    var did_subdiv = false;
     for (var i = 7, il = bezs.length; i < il; i += 8) {
       // Subdivide one cubic bezier (4 control points) in half, producing
       // 8 new control points (well, the original endpoints will remain).
-      var n = subdivCubic(bezs[i-7], bezs[i-6], bezs[i-5], bezs[i-4],
-                          bezs[i-3], bezs[i-2], bezs[i-1], bezs[i], 0.5);
-      new_bezs.push(n[0], n[1],  n[2] , n[3],  n[4],  n[5],  n[6],  n[7],
-                    n[8], n[9], n[10], n[11], n[12], n[13], n[14], n[15]);
+      var q0x = bezs[i-7], q0y = bezs[i-6], q1x = bezs[i-5], q1y = bezs[i-4],
+          q2x = bezs[i-3], q2y = bezs[i-2], q3x = bezs[i-1], q3y = bezs[i];
+
+      var ux = 3.0*q1x - 2.0*q0x - q3x, uy = 3.0*q1y - 2.0*q0y - q3y,
+          vx = 3.0*q2x - 2.0*q3x - q0x, vy = 3.0*q2y - 2.0*q3y - q0y;
+      if (vx > ux) ux = vx;
+      if (vy > uy) uy = vy;
+
+      if (ux*ux + uy*uy > tolerance) {  // Subdivide if not flat enough...
+        did_subdiv = true;
+        var n = subdivCubic(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y, 0.5);
+        new_bezs.push(n[0], n[1],  n[2] , n[3],  n[4],  n[5],  n[6],  n[7],
+                      n[8], n[9], n[10], n[11], n[12], n[13], n[14], n[15]);
+      } else {  // Flat enough, keep the undivided bezier.
+        new_bezs.push(q0x, q0y, q1x, q1y, q2x, q2y, q3x, q3y);
+      }
     }
     bezs = new_bezs;
+
+    if (did_subdiv === false) break;  // Nothing left to subdivide.
   }
 
   for (var i = 7, il = bezs.length; i < il; i += 8) {
@@ -69,29 +86,69 @@ function doCubicSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
   return points;
 }
 
+function doCubicSubdivFixed(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
+                            points, steps) {
+
+  var n = 1 / (steps + 1);
+
+  for (var t = n, i = 0; i < steps; ++i, t += n) {
+    // TODO(deanm): Reduce/optimize the bezier evaulation.
+    var x10 = p0x + (p1x-p0x)*t;
+    var x11 = p1x + (p2x-p1x)*t;
+    var x12 = p2x + (p3x-p2x)*t;
+    var x20 = x10 + (x11-x10)*t;
+    var x21 = x11 + (x12-x11)*t;
+    var x30 = x20 + (x21-x20)*t;  // Point on the curve at |t|.
+    var y10 = p0y + (p1y-p0y)*t;
+    var y11 = p1y + (p2y-p1y)*t;
+    var y12 = p2y + (p3y-p2y)*t;
+    var y20 = y10 + (y11-y10)*t;
+    var y21 = y11 + (y12-y11)*t;
+    var y30 = y20 + (y21-y20)*t;  // Point on the curve at |t|.
+
+    points.push(x30, y30);
+  }
+
+  points.push(p3x, p3y);  // Assume start is already pushed, but push end.
+}
+
+function doCubicSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
+                       points, subdiv_opts) {
+
+  if (subdiv_opts.tolerance !== undefined) {  // Flatness based subdivision.
+    var tolerance = 16 * subdiv_opts.tolerance * subdiv_opts.tolerance;
+    doCubicSubdivFlatness(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
+                          points, tolerance);
+  } else {  // Fixed interval evaluation.
+    var steps = subdiv_opts.steps !== undefined ? subdiv_opts.steps : 1;
+    doCubicSubdivFixed(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
+                       points, steps);
+  }
+}
+
 function doCubicSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
-                          points, subdiv_level) {
+                          points, subdiv_opts) {
   return doCubicSubdiv(p0x, p0y,
                        p0x+p1x,p0y+p1y,
                        p0x+p2x, p0y+p2y,
                        p0x+p3x, p0y+p3y,
-                       points, subdiv_level);
+                       points, subdiv_opts);
 }
 
-function doQuadSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_level) {
+function doQuadSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_opts) {
   // TODO(deanm): subdivQuadratic... currently the code just up-orders
   // quadratic beziers to cubics.
   return doCubicSubdiv(p0x, p0y,
                        p0x + 2/3 * (p1x-p0x), p0y + 2/3 * (p1y-p0y),
                        p2x + 2/3 * (p1x-p2x), p2y + 2/3 * (p1y-p2y),
-                       p2x, p2y, points, subdiv_level);
+                       p2x, p2y, points, subdiv_opts);
 }
 
-function doQuadSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_level) {
+function doQuadSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_opts) {
   return doQuadSubdiv(p0x, p0y,
                       p0x+p1x, p0y+p1y,
                       p0x+p2x, p0y+p2y,
-                      points, subdiv_level);
+                      points, subdiv_opts);
 }
 
 function SVGPathParser(svgstr) {
@@ -182,8 +239,10 @@ function SVGPathParser(svgstr) {
 // as a flat array of [x, y, x, y, ...].
 //
 // |svgstr|: SVG path string, ex: "M123 456 L56 18".
-// |subdiv_level|: How many times to subdivide beziers (recursive).
-function constructPolygonFromSVGPath(svgstr, subdiv_level) {
+// |subdiv_opts|: Option dictionary for how to process beziers.  |tolerance|
+// specifies the minimum desired "flatness error", while |steps| evaulations
+// the curve along equal spaced values for t.
+function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
   var paths = [ ];
   var points = null;
 
@@ -218,7 +277,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
         for (var j = 5; j < args.length; j += 6) {
           doCubicSubdivRel(curx, cury,
                            args[j-5], args[j-4], args[j-3], args[j-2],
-                           args[j-1], args[j], points, subdiv_level);
+                           args[j-1], args[j], points, subdiv_opts);
           last_control_x = curx + args[j-3]; last_control_y = cury + args[j-2];
           curx += args[j-1]; cury += args[j];
         }
@@ -227,7 +286,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
         for (var j = 5; j < args.length; j += 6) {
           doCubicSubdiv(curx, cury,
                         args[j-5], args[j-4], args[j-3], args[j-2],
-                        args[j-1], args[j], points, subdiv_level);
+                        args[j-1], args[j], points, subdiv_opts);
           last_control_x = args[j-3]; last_control_y = args[j-2];
           curx = args[j-1]; cury = args[j];
         }
@@ -237,7 +296,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
           doQuadSubdivRel(curx, cury,
                           args[j-3], args[j-2],
                           args[j-1], args[j],
-                          points, subdiv_level);
+                          points, subdiv_opts);
           last_control_x = curx + args[j-3]; last_control_y = cury + args[j-2];
           curx += args[j-1]; cury += args[j];
         }
@@ -246,7 +305,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
         for (var j = 3; j < args.length; j += 4) {
           doQuadSubdiv(curx, cury,
                        args[j-3], args[j-2], args[j-1], args[j],
-                       points, subdiv_level);
+                       points, subdiv_opts);
           last_control_x = args[j-3]; last_control_y = args[j-2];
           curx = args[j-1]; cury = args[j];
         }
@@ -279,7 +338,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
         // Since it's a relative command, makes the reflection math even easier.
         var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
         doCubicSubdivRel(curx, cury, rx1, ry1, args[0], args[1],
-                         args[2], args[3], points, subdiv_level);
+                         args[2], args[3], points, subdiv_opts);
         last_control_x = curx + args[0], last_control_y = cury + args[1];
         curx += args[2]; cury += args[3];
         break;
@@ -287,7 +346,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_level) {
         if (args.length !== 4) throw args.join(',');
         var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
         doCubicSubdiv(curx, cury, curx+rx1, cury+ry1, args[0], args[1],
-                         args[2], args[3], points, subdiv_level);
+                         args[2], args[3], points, subdiv_opts);
         last_control_x = args[0], last_control_y = args[1];
         curx = args[2]; cury = args[3];
         break;
