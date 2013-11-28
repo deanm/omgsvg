@@ -222,7 +222,7 @@ function SVGPathParser(svgstr) {
     // I think parseFloat should be okay with it, even though it's not a valid
     // JavaScript numerical constant.
     //
-    var num_re = /[+-]?(?:[0-9]+\.?|[0-9]*\.[0-9]+)(?:[eE][+-]?[0-9]+)?/g;
+    var num_re = /[+-]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:[eE][+-]?[0-9]+)?/g;
 
     var m;
     var args = [ ];
