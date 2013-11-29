@@ -144,6 +144,49 @@ function doQuadSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_opts) {
                       points, subdiv_opts);
 }
 
+// NOTE(deanm): SVG numbers can also be in exponential notation, follow the
+// grammar from the SVG spec:
+//
+// http://www.w3.org/TR/SVG/paths.html
+//
+// integer-constant:
+//   digit-sequence
+// number:
+//   sign? integer-constant
+//   | sign? floating-point-constant
+// floating-point-constant:
+//   fractional-constant exponent?
+//   | digit-sequence exponent
+// fractional-constant:
+//   digit-sequence? "." digit-sequence
+//   | digit-sequence "."
+// exponent:
+//   ( "e" | "E" ) sign? digit-sequence
+// sign:
+//   "+" | "-"
+// digit-sequence:
+//   digit
+//   | digit digit-sequence
+//
+// NOTE(deanm): Handling of leading space/commas not conformant but should
+// work well enough.  If we simplify the above BNF just for the case of
+// number, we get something more like:
+//
+// number:
+//   sign? (digit-sequence | fractional-constant) exponent?
+//
+// NOTE(deanm): At least how I looked at the BNF there is no special
+// handling of leading zeros, so 000.3 should be for example.  I believe
+// this would different form the JSON spec for numbers, for example.  But
+// I think parseFloat should be okay with it, even though it's not a valid
+// JavaScript numerical constant.
+function parse_svg_number_list(str) {
+    var num_re = /[+-]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:[eE][+-]?[0-9]+)?/g;
+    var m, nums = [ ];
+    while ((m = num_re.exec(str)) !== null) nums.push(parseFloat(m[0]));
+    return nums;
+}
+
 function SVGPathParser(svgstr) {
   var p = -1;
   var pl = svgstr.length;
@@ -177,53 +220,7 @@ function SVGPathParser(svgstr) {
   this.parse_cur_args = function() {
     var end = find_cmd(p + 1);
     var argpart = svgstr.substr(p + 1, (end === null ? pl : end) - p - 1);
-
-    // NOTE(deanm): SVG numbers can also be in exponential notation, follow the
-    // grammar from the SVG spec:
-    //
-    // http://www.w3.org/TR/SVG/paths.html
-    //
-    // integer-constant:
-    //   digit-sequence
-    // number:
-    //   sign? integer-constant
-    //   | sign? floating-point-constant
-    // floating-point-constant:
-    //   fractional-constant exponent?
-    //   | digit-sequence exponent
-    // fractional-constant:
-    //   digit-sequence? "." digit-sequence
-    //   | digit-sequence "."
-    // exponent:
-    //   ( "e" | "E" ) sign? digit-sequence
-    // sign:
-    //   "+" | "-"
-    // digit-sequence:
-    //   digit
-    //   | digit digit-sequence
-    //
-    // NOTE(deanm): Handling of leading space/commas not conformant but should
-    // work well enough.  If we simplify the above BNF just for the case of
-    // number, we get something more like:
-    //
-    // number:
-    //   sign? (digit-sequence | fractional-constant) exponent?
-    //
-    // NOTE(deanm): At least how I looked at the BNF there is no special
-    // handling of leading zeros, so 000.3 should be for example.  I believe
-    // this would different form the JSON spec for numbers, for example.  But
-    // I think parseFloat should be okay with it, even though it's not a valid
-    // JavaScript numerical constant.
-    //
-    var num_re = /[+-]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:[eE][+-]?[0-9]+)?/g;
-
-    var m;
-    var args = [ ];
-    while ((m = num_re.exec(argpart)) !== null) {
-      args.push(parseFloat(m[0]));
-    }
-
-    return args;
+    return parse_svg_number_list(argpart);
   };
 }
 
@@ -353,6 +350,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
 }
 
 try {  // Module JS
+  exports.parse_svg_number_list = parse_svg_number_list;
   exports.SVGPathParser = SVGPathParser;
   exports.constructPolygonFromSVGPath = constructPolygonFromSVGPath;
 } catch(e) { }
