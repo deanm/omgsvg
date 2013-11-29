@@ -25,6 +25,7 @@ function subdivCubic(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
   // of the recursive and y is the point (each step one less).  The first
   // p0 would be 00, p1 would be 01, etc.
 
+  // de Casteljau.
   var x10 = p0x + (p1x-p0x)*t;
   var x11 = p1x + (p2x-p1x)*t;
   var x12 = p2x + (p3x-p2x)*t;
@@ -92,20 +93,12 @@ function doCubicSubdivFixed(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
   var n = 1 / (steps + 1);
 
   for (var t = n, i = 0; i < steps; ++i, t += n) {
-    // TODO(deanm): Reduce/optimize the bezier evaulation.
-    var x10 = p0x + (p1x-p0x)*t;
-    var x11 = p1x + (p2x-p1x)*t;
-    var x12 = p2x + (p3x-p2x)*t;
-    var x20 = x10 + (x11-x10)*t;
-    var x21 = x11 + (x12-x11)*t;
-    var x30 = x20 + (x21-x20)*t;  // Point on the curve at |t|.
-    var y10 = p0y + (p1y-p0y)*t;
-    var y11 = p1y + (p2y-p1y)*t;
-    var y12 = p2y + (p3y-p2y)*t;
-    var y20 = y10 + (y11-y10)*t;
-    var y21 = y11 + (y12-y11)*t;
-    var y30 = y20 + (y21-y20)*t;  // Point on the curve at |t|.
-
+    // Preform Horner's method (but only on one of the terms, the complication
+    // for doing the bivariate or basis change doesn't seem worth it).  Forward
+    // differencing is likely also too complicated, |steps| is likely small.
+    var ti = 1 - t, ti2 = ti * ti, ti3 = ti2 * ti;
+    var x30 = ti3*p0x + t*(3*ti2*p1x + t*(3*ti*p2x + t*p3x));
+    var y30 = ti3*p0y + t*(3*ti2*p1y + t*(3*ti*p2y + t*p3y));
     points.push(x30, y30);
   }
 
@@ -136,8 +129,8 @@ function doCubicSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
 }
 
 function doQuadSubdiv(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_opts) {
-  // TODO(deanm): subdivQuadratic... currently the code just up-orders
-  // quadratic beziers to cubics.
+  // TODO(deanm): subdivQuadratic... currently the code just elevates the
+  // degree from quadratic to cubics beziers.
   return doCubicSubdiv(p0x, p0y,
                        p0x + 2/3 * (p1x-p0x), p0y + 2/3 * (p1y-p0y),
                        p2x + 2/3 * (p1x-p2x), p2y + 2/3 * (p1y-p2y),
