@@ -180,12 +180,79 @@ function doQuadSubdivRel(p0x, p0y, p1x, p1y, p2x, p2y, points, subdiv_opts) {
 // this would different form the JSON spec for numbers, for example.  But
 // I think parseFloat should be okay with it, even though it's not a valid
 // JavaScript numerical constant.
-function parse_svg_number_list(str) {
+function parseSVGNumberList(str) {
     var num_re = /[+-]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:[eE][+-]?[0-9]+)?/g;
     var m, nums = [ ];
     while ((m = num_re.exec(str)) !== null) nums.push(parseFloat(m[0]));
     return nums;
 }
+
+// Multiply a 2x3 (implicit 3x3) matrix by another, in place.
+function mul_mat_2x3(mat, A, B, C, D, E, F) {
+  var a = mat[0], b = mat[1],
+      c = mat[2], d = mat[3],
+      e = mat[4], f = mat[5];
+
+  mat[0] = a*A + B*c;
+  mat[1] = A*b + B*d;
+  mat[2] = a*C + c*D;
+  mat[3] = b*C + d*D;
+  mat[4] = a*E + c*F + e;
+  mat[5] = b*E + d*F + f;
+
+  return mat;  // Multiplication was in place, but return for convenience.
+}
+
+// Multiply a matrix |mat| by the operations specified in an SVG transform
+// string, ie: "scale(1 2) translate(.5,8)" etc.
+function applyTransformStringToMatrix(mat, transform_string) {
+  var re_commands = /\s*([A-Za-z]+)\(([^\)]*)\)/g;  // Should be good enough.
+  var res;
+  while ((res = re_commands.exec(transform_string)) !== null) {
+    var cmd = res[1];
+    var args = parseSVGNumberList(res[2]);
+
+    switch (cmd) {
+      case 'matrix':  // matrix(<a> <b> <c> <d> <e> <f>)
+        if (args.length !== 6) throw cmd;
+        mul_mat_2x3(mat,
+                    args[0], args[1], args[2], args[3], args[4], args[5]);
+        break;
+      case 'translate':  // translate(<tx> [<ty>])
+        if (args.length === 1) args.push(0);  // default <ty>.
+        if (args.length !== 2) throw cmd;
+        mul_mat_2x3(mat, 1, 0, 0, 1, args[0], args[1]);
+        break;
+      case 'scale':  // scale(<sx> [<sy>])
+        if (args.length === 1) args.push(args[0]);  // default <sy> to <sx>.
+        if (args.length !== 2) throw cmd;
+        mul_mat_2x3(mat, args[0], 0, 0, args[1], 0, 0);
+        break;
+      case 'rotate':  // rotate(<rotate-angle> [<cx> <cy>])
+        if (args.length !== 1 && args.length !== 3) throw cmd;
+        var a = args[0] * 0.0174532925199433;  // degrees to radians.
+        var ac = Math.cos(a), as = Math.sin(a);
+        if (args.length === 3) mul_mat_2x3(mat, 1, 0, 0, 1, args[1], args[2]);
+        mul_mat_2x3(mat, ac, as, -as, ac, 0, 0);
+        if (args.length === 3) mul_mat_2x3(mat, 1, 0, 0, 1, -args[1], -args[2]);
+        break;
+      case 'skewX':  // skewX(<skew-angle>)
+        if (args.length !== 1) throw cmd;
+        mul_mat_2x3(mat, 1, 0, Math.tan(args[0]), 1, 0, 0);
+        break;
+      case 'skewY':  // skewY(<skew-angle>)
+        if (args.length !== 1) throw cmd;
+        mul_mat_2x3(mat, 1, Math.tan(args[0]), 0, 1, 0, 0);
+        break;
+      default:
+        throw 'Unhandled transform command: ' + cmd;
+        break;
+    }
+  }
+
+  return mat;  // Multiplication was in place, but return for convenience.
+}
+
 
 function SVGPathParser(svgstr) {
   var p = -1;
@@ -220,7 +287,7 @@ function SVGPathParser(svgstr) {
   this.parse_cur_args = function() {
     var end = find_cmd(p + 1);
     var argpart = svgstr.substr(p + 1, (end === null ? pl : end) - p - 1);
-    return parse_svg_number_list(argpart);
+    return parseSVGNumberList(argpart);
   };
 }
 
@@ -350,7 +417,8 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
 }
 
 try {  // Module JS
-  exports.parse_svg_number_list = parse_svg_number_list;
+  exports.parseSVGNumberList = parseSVGNumberList;
+  exports.applyTransformStringToMatrix = applyTransformStringToMatrix;
   exports.SVGPathParser = SVGPathParser;
   exports.constructPolygonFromSVGPath = constructPolygonFromSVGPath;
 } catch(e) { }
