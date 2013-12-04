@@ -374,6 +374,12 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
           points.push(curx, cury);
         }
         break;
+      case 'L':  // Absolute line.
+        for (var j = 1; j < args.length; j += 2) {
+          curx = args[j-1]; cury = args[j];
+          points.push(curx, cury);
+        }
+        break;
       case 'h':  // Relative horizontal.
         if (args.length !== 1) throw args.join(',');
         curx += args[0];
