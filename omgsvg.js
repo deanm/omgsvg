@@ -322,7 +322,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
           points.push(curx, cury);
         }
         break;
-      case 'm':  // Move relative.
+      case 'm':  // Move, also handle extra arguments like they are an l.
         var points = [ ];
         paths.push(points);
         for (var j = 1; j < args.length; j += 2) {
