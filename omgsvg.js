@@ -381,14 +381,36 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         }
         break;
       case 'h':  // Relative horizontal.
-        if (args.length !== 1) throw args.join(',');
-        curx += args[0];
-        points.push(curx, cury);
+        // As the spec says: Multiple x values can be provided (although
+        // usually this doesn't make sense).
+        for (var j = 0; j < args.length; ++j) {
+          curx += args[j];
+          points.push(curx, cury);
+        }
         break;
       case 'H':  // Absolute horizontal.
-        if (args.length !== 1) throw args.join(',');
-        curx = args[0];
-        points.push(curx, cury);
+        // As the spec says: Multiple x values can be provided (although
+        // usually this doesn't make sense).
+        for (var j = 0; j < args.length; ++j) {
+          curx = args[j];
+          points.push(curx, cury);
+        }
+        break;
+      case 'v':  // Relative vertical.
+        // As the spec says: Multiple y values can be provided (although
+        // usually this doesn't make sense).
+        for (var j = 0; j < args.length; ++j) {
+          cury += args[j];
+          points.push(curx, cury);
+        }
+        break;
+      case 'V':  // Absolute vertical.
+        // As the spec says: Multiple y values can be provided (although
+        // usually this doesn't make sense).
+        for (var j = 0; j < args.length; ++j) {
+          cury = args[j];
+          points.push(curx, cury);
+        }
         break;
       case 'Z': case 'z':  // Close.
         if (args.length !== 0) throw args.join(',');
