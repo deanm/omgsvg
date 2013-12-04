@@ -408,7 +408,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         curx = args[2]; cury = args[3];
         break;
       default:
-        console.log('Unknown command: ' + cmd);
+        throw 'Unhandled path command: ' + cmd;
         break;
     }
   }
