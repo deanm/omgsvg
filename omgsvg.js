@@ -391,8 +391,20 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         points.push(curx, cury);
         break;
       case 'Z': case 'z':  // Close.
-        //if (args.length !== 0) throw args.join(',');
+        if (args.length !== 0) throw args.join(',');
+
+        // TODO(deanm): Have a mechanism to mark subpaths as closed.  We are
+        // currently not saving this information, so you must just assume that
+        // are paths are open or closed.  Additionally for closed paths we try
+        // not to duplicate the start and end points (although this can happen
+        // anyway when a curve comes back to the starting point).  Close is
+        // more of a flag than an actual operation.
         //points.push(points[0]); points.push(points[1]);
+
+        // Sort of an extra sanity measure, to make sure that we aren't pushing
+        // new points onto an old (closed) subpath, in case a moveTo is missing
+        // and we didn't create a new subpath.
+        points = null;
         break;
       case 's':  // Relative smooth.
         if (args.length !== 4) throw args.join(',');
