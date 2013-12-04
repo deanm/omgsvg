@@ -317,7 +317,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'M':  // Move, also handle extra arguments like they are an L.
         var points = [ ];
         paths.push(points);
-        for (var j = 1; j < args.length; j += 2) {
+        for (var j = 1, jl = args.length; j < jl; j += 2) {
           curx = args[j-1]; cury = args[j];
           points.push(curx, cury);
         }
@@ -325,13 +325,13 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'm':  // Move, also handle extra arguments like they are an l.
         var points = [ ];
         paths.push(points);
-        for (var j = 1; j < args.length; j += 2) {
+        for (var j = 1, jl = args.length; j < jl; j += 2) {
           curx += args[j-1]; cury += args[j];
           points.push(curx, cury);
         }
         break;
       case 'c':  // Relative cubic.
-        for (var j = 5; j < args.length; j += 6) {
+        for (var j = 5, jl = args.length; j < jl; j += 6) {
           doCubicSubdivRel(curx, cury,
                            args[j-5], args[j-4], args[j-3], args[j-2],
                            args[j-1], args[j], points, subdiv_opts);
@@ -340,7 +340,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         }
         break;
       case 'C':  // Absolute cubic.
-        for (var j = 5; j < args.length; j += 6) {
+        for (var j = 5, jl = args.length; j < jl; j += 6) {
           doCubicSubdiv(curx, cury,
                         args[j-5], args[j-4], args[j-3], args[j-2],
                         args[j-1], args[j], points, subdiv_opts);
@@ -349,7 +349,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         }
         break;
       case 'q':  // Relative quadratic.
-        for (var j = 3; j < args.length; j += 4) {
+        for (var j = 3, jl = args.length; j < jl; j += 4) {
           doQuadSubdivRel(curx, cury,
                           args[j-3], args[j-2],
                           args[j-1], args[j],
@@ -359,7 +359,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         }
         break;
       case 'Q':  // Absolute quadratic.
-        for (var j = 3; j < args.length; j += 4) {
+        for (var j = 3, jl = args.length; j < jl; j += 4) {
           doQuadSubdiv(curx, cury,
                        args[j-3], args[j-2], args[j-1], args[j],
                        points, subdiv_opts);
@@ -369,13 +369,13 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         break;
       case 'l':  // Relative line.
         //if (args[0] === 0 && args[1] === 0) break;
-        for (var j = 1; j < args.length; j += 2) {
+        for (var j = 1, jl = args.length; j < jl; j += 2) {
           curx += args[j-1]; cury += args[j];
           points.push(curx, cury);
         }
         break;
       case 'L':  // Absolute line.
-        for (var j = 1; j < args.length; j += 2) {
+        for (var j = 1, jl = args.length; j < jl; j += 2) {
           curx = args[j-1]; cury = args[j];
           points.push(curx, cury);
         }
@@ -383,7 +383,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'h':  // Relative horizontal.
         // As the spec says: Multiple x values can be provided (although
         // usually this doesn't make sense).
-        for (var j = 0; j < args.length; ++j) {
+        for (var j = 0, jl = args.length; j < jl; ++j) {
           curx += args[j];
           points.push(curx, cury);
         }
@@ -391,7 +391,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'H':  // Absolute horizontal.
         // As the spec says: Multiple x values can be provided (although
         // usually this doesn't make sense).
-        for (var j = 0; j < args.length; ++j) {
+        for (var j = 0, jl = args.length; j < jl; ++j) {
           curx = args[j];
           points.push(curx, cury);
         }
@@ -399,7 +399,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'v':  // Relative vertical.
         // As the spec says: Multiple y values can be provided (although
         // usually this doesn't make sense).
-        for (var j = 0; j < args.length; ++j) {
+        for (var j = 0, jl = args.length; j < jl; ++j) {
           cury += args[j];
           points.push(curx, cury);
         }
@@ -407,7 +407,7 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
       case 'V':  // Absolute vertical.
         // As the spec says: Multiple y values can be provided (although
         // usually this doesn't make sense).
-        for (var j = 0; j < args.length; ++j) {
+        for (var j = 0, jl = args.length; j < jl; ++j) {
           cury = args[j];
           points.push(curx, cury);
         }
