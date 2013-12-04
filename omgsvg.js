@@ -429,24 +429,27 @@ function constructPolygonFromSVGPath(svgstr, subdiv_opts) {
         points = null;
         break;
       case 's':  // Relative smooth.
-        if (args.length !== 4) throw args.join(',');
         // Reflect previous control point across endpoint.  Assumes previous
         // command was a c or s (see comment in w3c spec).
         // Since it's a relative command, makes the reflection math even easier.
-        var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
-        doCubicSubdivRel(curx, cury, rx1, ry1, args[0], args[1],
-                         args[2], args[3], points, subdiv_opts);
-        last_control_x = curx + args[0], last_control_y = cury + args[1];
-        curx += args[2]; cury += args[3];
+        for (var j = 3, jl = args.length; j < jl; j += 4) {
+          var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
+          doCubicSubdivRel(curx, cury, rx1, ry1, args[j-3], args[j-2],
+                           args[j-1], args[j], points, subdiv_opts);
+          last_control_x = curx + args[j-3]; last_control_y = cury + args[j-2];
+          curx += args[j-1]; cury += args[j];
+        }
         break;
       case 'S':  // Absolute smooth.
-        if (args.length !== 4) throw args.join(',');
-        var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
-        doCubicSubdiv(curx, cury, curx+rx1, cury+ry1, args[0], args[1],
-                         args[2], args[3], points, subdiv_opts);
-        last_control_x = args[0], last_control_y = args[1];
-        curx = args[2]; cury = args[3];
+        for (var j = 3, jl = args.length; j < jl; j += 4) {
+          var rx1 = curx - last_control_x, ry1 = cury - last_control_y;
+          doCubicSubdiv(curx, cury, curx+rx1, cury+ry1, args[j-3], args[j-2],
+                           args[j-1], args[j], points, subdiv_opts);
+          last_control_x = args[j-3]; last_control_y = args[j-2];
+          curx = args[j-1]; cury = args[j];
+        }
         break;
+      // TODO(deanm): Support t/T (shorthand quadratic) and a/A (arc).
       default:
         throw 'Unhandled path command: ' + cmd;
         break;
